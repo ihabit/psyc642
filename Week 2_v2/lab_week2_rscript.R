@@ -134,7 +134,6 @@ print (q1mean)
 df %>%
   ggplot(aes(x = q1)) +
   geom_boxplot(fill = "grey", color = "black") +
-  stat_summary(fun = median, geom = "point", shape = 18, size = 3, color = "red") +
   labs(title = "Q1: On the whole, I am satisfied with myself.",
        x = "Q1 Score") +
   theme_bw()
