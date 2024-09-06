@@ -35,6 +35,8 @@ print(q4mean)
 
 describe(df)
 
+q4mode2 <- (df$q4)
+
 q4mode <- c(4, 4, 2, 4, 3)
 mode <- mlv(q4mode, method = "mfv") # Most Frequent Value
 print(mode)
@@ -125,10 +127,15 @@ df %>%
 
 # 8. Create a boxplot for Q1.
 
+q1mean <- mean(df$q1)
+q1median <- median(df$q1)
+print (q1mean)
+
 df %>%
   ggplot(aes(x = q1)) +
   geom_boxplot(fill = "grey", color = "black") +
-  coord_flip() +
+  stat_summary(fun = median, geom = "point", shape = 18, size = 3, color = "red") +
   labs(title = "Q1: On the whole, I am satisfied with myself.",
        x = "Q1 Score") +
   theme_bw()
+
