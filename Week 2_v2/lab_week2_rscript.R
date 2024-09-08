@@ -117,7 +117,7 @@ df %>%
            hjust = 1.1, 
            size = 4) +
   
-  labs(title = "Q4: I feel that I’m a person of worth, at least on an equal plane with others.",
+  labs(title = "Q4: I feel that I’m a person of worth,\nat least on an equal plane with others.",
         x = "Q4 Score",
         y = "Frequency") +
   
