@@ -1,0 +1,108 @@
+---
+title: "Module 1 Script"
+format: html
+editor: visual
+---
+
+## Module 1
+
+***1. Notation, Levels of Measurement, Distributions***
+
+*✷ define terms*
+
+*✷ differentiate scales (H)*
+
+*✷ identify and produce univariate and sampling distributions (SW)*
+
+*✷ produce univariate plots (SW)*
+
+*✷ produce bivariate plots (SW)*
+
+***2. Measures of Central Tendency and Dispersion***
+
+*✷ define terms*
+
+*✷ compute measures of central tendency (H)*
+
+*✷ compute measures of dispersion (H)*
+
+*✷ identify and produce measures of central tendency and dispersion (SW)*
+
+*✷ produce plot annotated with measures of central tendency and dispersion (SW)*
+
+*✷ discuss implications of the plot*
+
+```{r}
+library(psych)
+library(tidyverse)
+data(mtcars)
+
+```
+
+```{r}
+psych::describe(mtcars)
+```
+
+Getting a glimpse of the data:
+
+I want to get a handle on what were working with before diving deep on a few variables - so let's generate some basic descriptive statistics going and some ugly plots to get a sense of the shape and trends of the dataset.
+
+Okay, so we're looking at a full table using the describe function from the psych package in R. Interestingly, the default describe function does not include quartiles so we can also call summary from base R to get a large picture of the data.
+
+```{r}
+
+summary(mtcars)
+```
+
+Great, now with a more complete picture, we can start to sus out some interesting aspects of our data. I'm particularly interested in MPG, or miles per gallon, there's a large dispersion between our min and max within MPG with a median slightly less than the mean, which tells us that this variable might not be normally distributed.
+
+Let's verify and start to understand the shape of MPG with a quick and dirty histogram:
+
+```{r}
+hist(mtcars$mpg)
+
+```
+
+Great, as you can see this confirms
+
+Any variable: let's look at the the mean, and in any normally distributed sample, the arithmetic mean is generally the center or middle point of the data, hence why it is a "measure of central" tendency. You can also use the median value, but generally the median is a more reliable assumption of central tendency when the data are skewed in some way, a classic stat example being a sample of salaries of folks eating in a diner, if a billionaire walked in, the mean of that data might move from 46k to 125m, but the median value may be 47.5k, a truer measure of the middle point of our sample of diner patrons.
+
+Descriptions like "mode" generally refer to the "most frequent value" and work well with nominal data, i.e. data that is an un-ordered description like "Human" or "Dragon". Nominal data are also categorical, which just means the data can be divided into discrete groups. I like this illustration that outlines categorical data, it probably does a better job than I just did:
+
+![](images/nominal_ordinal_binary.png){fig-align="center"}
+
+Anyway, back to the variable at hand:
+
+Let's dig a bit deeper by calling describe once again just on MPG and filter out the noise of all of this information:
+
+```{r}
+psych::describe(mtcars$mpg)
+```
+
+Let's also generate a more advanced look by plotting our measures of central tendency and dispersion against the raw data from MPG. I do like histograms, but this modified density plot gives you a better sense of the shape of the distribution.
+
+```{r}
+#plot with mean, and SD's
+```
+
+Describe SD and it's formulaic relationship with variance. Relate the SD to the mean and describe why this is important: it allows us to infer and estimate values around the mean. We know that around 2/3 of the sample is within 1 SD, and 95% is within 2.
+
+SD and it's relationship to variance is interesting because you can visually see that as variance increases, the shape of our distribution gets wider, showing a greater so called "distance" between the mean and each SD segment. The inverse is true, the lower the variance, the taller or narrower the normal curve becomes.
+
+We can use this information to make inferences about the total population of cars with a 95% confidence level that if we repeated this data gathering (or simulated it) we can say that most cars would be between 8 and 32 MPG, and the standard error is X. blah
+
+We can visualize this a different way by using a z transformation to center the data around a mean of 0, that way you'll be able to literally see the areas of SD under the curve.
+
+```{r}
+#z transform
+#var.z <- scale(mtcars$mpg)
+#hist(var.z, freq = F)
+```
+
+I think we can go further and try to visually establish a relationship b/w two variables. We won't go into an actual statistical evaluation of the strength of the relationship using something like P values, but we utilize a scatterplot with a line of best fit that may illustrate a positive linear relationship between var 1 and var 2.
+
+```{r}
+#plot vars
+#add ln 
+#annotate and visualize in ggplot
+```
