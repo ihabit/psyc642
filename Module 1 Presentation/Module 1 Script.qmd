@@ -106,3 +106,5 @@ I think we can go further and try to visually establish a relationship b/w two v
 #add ln 
 #annotate and visualize in ggplot
 ```
+
+Overlay sample SD over normal population distribution...you must scale/transform to center the mean around 0 to compare/overlay.
