@@ -137,4 +137,3 @@ df %>%
   labs(title = "Q1: On the whole, I am satisfied with myself.",
        x = "Q1 Score") +
   theme_bw()
-

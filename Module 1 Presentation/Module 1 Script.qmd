@@ -35,12 +35,85 @@ editor: visual
 ```{r}
 library(psych)
 library(tidyverse)
-data(mtcars)
+library(kableExtra)
+library(ggridges)
+install.packages("reshape2")
+library(reshape2)
+
+df <- read.csv("mod1.csv")
 
 ```
 
 ```{r}
-psych::describe(mtcars)
+# Melt the data to long format
+df_long <- melt(df)
+
+# Plot histograms using ggplot and facet_wrap
+ggplot(df_long, aes(x = value)) +
+  geom_histogram(bins = 7, fill = "blue", color = "black") +
+  facet_wrap(~ variable, scales = "free") +  # Create one histogram for each variable
+  labs(title = "Histograms for Each Variable",
+       x = "Value", 
+       y = "Count") +
+  theme_minimal()
+
+# Used Sturges' Rule k=⌈log2(n)+1⌉ to calculate bins
+
+# Plot density plots using ggplot and facet_wrap
+
+ggplot(df_long, aes(x = value)) +
+    geom_density(fill = "blue", color = "black") +
+    facet_wrap(~ variable, scales = "free") + 
+    labs (title = "Density Plots for Each Variable",
+          x = "Value",
+          y = "Count") +
+    theme_minimal()
+```
+
+```{r}
+psych::describe(df)
+x1_desc <- describe(df$x1)
+
+describe_table <- x1_desc %>%
+  as.data.frame() %>%
+  select(n, mean, sd, median, min, max, skew, kurtosis)
+
+describe_table %>%
+  kbl(caption = "Descriptive Statistics for x1") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+
+```
+
+```{r}
+ggplot(df, aes(x = x1, y = factor(sex), fill = factor(sex))) +
+  geom_density_ridges(alpha = 0.6, color = "white") +  # Adjust transparency and line color
+  labs(x = "x1", y = NULL) +  # Remove y-axis label
+  scale_fill_manual(name = "Sex", values = c("dodgerblue", "red")) +  # Change key label to "Sex"
+  theme_minimal() +  # Clean theme
+  theme(
+    axis.text.y = element_blank(),   # Remove y-axis text (grid labels)
+    axis.ticks.y = element_blank(),  # Remove y-axis ticks
+    panel.grid.major.y = element_blank()  # Remove y-axis grid lines
+  )
+```
+
+```{r}
+ggplot(df, aes(x = x1, y = factor(sex))) +
+   geom_density_ridges(fill = "gray90") +
+   labs(x = "x1", y = "Sex")
+```
+
+```{r}
+ggplot(df, aes(x = x1, y = y)) +
+   geom_point(color = "gray5", alpha = .3) +
+   geom_smooth(method = "lm", 
+               se = TRUE,
+               formula = y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5),
+               color = "black",
+               fill = "firebrick") +
+   labs(x = "x1", y = "y") +
+  theme_minimal()
 ```
 
 Getting a glimpse of the data:
@@ -51,17 +124,12 @@ Okay, so we're looking at a full table using the describe function from the psyc
 
 ```{r}
 
-summary(mtcars)
+summary(df)
 ```
 
 Great, now with a more complete picture, we can start to sus out some interesting aspects of our data. I'm particularly interested in MPG, or miles per gallon, there's a large dispersion between our min and max within MPG with a median slightly less than the mean, which tells us that this variable might not be normally distributed.
 
 Let's verify and start to understand the shape of MPG with a quick and dirty histogram:
-
-```{r}
-hist(mtcars$mpg)
-
-```
 
 Great, as you can see this confirms
 
@@ -76,7 +144,7 @@ Anyway, back to the variable at hand:
 Let's dig a bit deeper by calling describe once again just on MPG and filter out the noise of all of this information:
 
 ```{r}
-psych::describe(mtcars$mpg)
+psych::describe(df)
 ```
 
 Let's also generate a more advanced look by plotting our measures of central tendency and dispersion against the raw data from MPG. I do like histograms, but this modified density plot gives you a better sense of the shape of the distribution.

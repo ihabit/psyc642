@@ -1,0 +1,215 @@
+---
+title: "Module 1 Script v2"
+format:
+  html:
+    code-fold: true
+editor: visual
+---
+
+## A First Look Analysis of 2023-2024 Well-Being Study Data from U.S. Antarctic Research Outpost 31
+
+![](images/U.S._Outpost_31_-_Profile.png)
+
+Maureen, MAUREEN! Get me a coffee will yah?
+
+We're rolling? Oh *ahem*...
+
+My name is Ian Habit and I am the Lab Director for the U.S. Antarctic Research Program - Human Systems Division, preparing this video report for Assistant Chief of the Human Systems Division, Dr. McKnight.
+
+I know your time is precious sir, so I will try to keep this briefing...brief.
+
+As you know, 41 years ago, the scientists and operations staff of Research Outpost 31, save 2, were killed in a mysterious mass casualty event. Leading theories from other divisions include gas leaks and rancid MRE's...but we at the Human Systems Division have a different theory: the lack of staff well-being and stress due to the harsh environment drove the occupants to murder each other in a mass hysteria cluster.
+
+So, 41 years later, science must continue! We finally garnered the funding to record markers of well-being in extreme polar environments, and we expanded the study to 50 participants, 25 men and 25 women, housed once again at Research Outpost 31. Not sure who made the call on carrying it out in the same place, but at least the location will be replicated!
+
+It was my idea? *turns off camera* well the next time I suggest something like that, warn me about it! You think it looks good we did the study in the same creepy ass outpost that was abandoned for 40 years? Jesus christ with how much I pay you all..
+
+Anyway, we just received the data and I want to run through a live analysis so you can get an immediate first look to report up the chain. I expect the findings to be quite interesting. Thanks again to RJ MacReady, one of the 2 survivors of the original incident, for agreeing to serve as a our field data monitor.
+
+![](images/the-thing-1.avif)
+
+Before we dive in, just a note: this is a small sample size, we may find that a lot of our descriptive values have very little deviation and point toward many of our variable being considered "normal"...but we have to be careful with these assumptions and actually visualize our data to confirm this suspicion.
+
+Also, a lot of the variables we measured were of differing scales and self reported, things like happiness were 0 - 100, others were 1-5 ratings...we've rescaled the data in this collection sir so that we have a level playing field for analysis. Regardless, we'll still z transform some of this data later when we start comparing them for relationship strength.
+
+Let's get to it:
+
+```{r}
+# Load Packages and Dataset
+
+library(psych)
+library(tidyverse)
+library(kableExtra)
+library(ggridges)
+library(reshape2)
+
+df <- read.csv("mod1.csv")
+```
+
+### Observing the whole data set
+
+```{r, echo=FALSE}
+df_numeric <- df %>% select(where(is.numeric))
+df_desc <- psych::describe(df_numeric)
+
+df_desc %>%
+  kbl() %>%
+  kable_paper("hover", full_width= F)
+```
+
+```{r}
+
+# Melt the data to long format
+df_long <- melt(df)
+
+# Plot histograms using ggplot and facet_wrap
+# Used Sturges' Rule k=⌈log2(n)+1⌉ to calculate bins
+ggplot(df_long, aes(x = value)) +
+  geom_histogram(bins = 7, fill = "dodgerblue", color = "white") +
+  facet_wrap(~ variable, scales = "free") +  # Create one histogram for each variable
+  labs(title = "Histograms for Each Variable",
+       x = "Value", 
+       y = "Freq") +
+  theme_minimal()
+```
+
+X4 and X9 are looking interesting...X4 appears to have an outlier (remember what I said about the small sample size?) so we'll have to zoom in there to see what's going on. And X1, looks like a positive skew...wonder how strongly that's actually going to relate to Y. Let's focus on those two for now.
+
+Looking at x4 more closely, I would call that value way out to the right is (what is the SD here?) **Need to graph the mean and variance**
+
+```{r}
+mean_x4 <- mean(df$x4)
+sd_x4 <- sd(df$x4)
+
+ggplot(df, aes(x = x4)) + 
+  geom_histogram(binwidth = 0.5, fill = "dodgerblue", color = "white", aes(y = ..density..)) +
+  geom_density(alpha = 0.4, fill = "firebrick", color = NA) +
+  stat_function(fun = dnorm, args = list(mean = mean_x4, sd = sd_x4), color = "black", size = 1) +
+  
+  # Add vertical lines for mean and mean ± standard deviation
+ geom_segment(aes(x = mean_x4, xend = mean_x4, y = 0, yend = Inf), linetype = "dashed", color = "darkblue", size = 1) +
+  geom_segment(aes(x = mean_x4 + sd_x4, xend = mean_x4 + sd_x4, y = 0, yend = Inf), linetype = "dotted", color = "firebrick", size = 1) +
+  geom_segment(aes(x = mean_x4 - sd_x4, xend = mean_x4 - sd_x4, y = 0, yend = Inf), linetype = "dotted", color = "firebrick", size = 1) +
+  
+  # Annotate the mean and standard deviations
+  annotate("text", x = mean_x4, y = 0.02, label = paste("Mean:", round(mean_x4, 2)), color = "darkblue", vjust = 2, size = 4, fontface = "bold") +
+  annotate("text", x = mean_x4 + sd_x4, y = 0.02, label = paste("SD:", round(mean_x4 + sd_x4, 2)), color = "firebrick", vjust = 2, size = 4, fontface = "bold") +
+  annotate("text", x = mean_x4 - sd_x4, y = 0.02, label = paste("SD:", round(mean_x4 - sd_x4, 2)), color = "firebrick", vjust = 2, size = 4, fontface = "bold") +
+  
+  # Apply minimal theme
+  theme_minimal() +
+  theme(  # Remove major vertical grid lines
+    panel.grid.minor.x = element_blank(),  # Remove minor vertical grid lines
+    panel.grid.minor.y = element_blank()  
+    )# Remove minor horizontal grid lines (half lines)
+```
+
+x9 is interesting, as at first glance, it appears the most "normal" out of our health variables.
+
+```{r}
+mean_x9 <- mean(df$x9)
+sd_x9 <- sd(df$x9)
+median_x9 <- median(df$x9)
+
+ggplot(df, aes(x = x9)) + 
+  geom_histogram(binwidth = 0.5, fill = "dodgerblue", color = "white", aes(y = ..density..)) +
+  geom_density(alpha = 0.4, fill = "firebrick", color = NA) +
+  stat_function(fun = dnorm, args = list(mean = mean_x9, sd = sd_x9), color = "black", size = 1) +
+  
+  # Add vertical lines for mean and mean ± standard deviation
+ geom_segment(aes(x = mean_x9, xend = mean_x9, y = 0, yend = Inf), linetype = "solid", color = "darkblue", size = 1) +
+  geom_segment(aes(x = mean_x9 + sd_x9, xend = mean_x9 + sd_x9, y = 0, yend = Inf), linetype = "dotted", color = "firebrick", size = 1) +
+  geom_segment(aes(x = mean_x9 - sd_x9, xend = mean_x9 - sd_x9, y = 0, yend = Inf), linetype = "dotted", color = "firebrick", size = 1) +
+  
+  # Annotate the mean and standard deviations
+  annotate("text", x = mean_x9, y = 0.02, label = paste("Mean:", round(mean_x9, 2)), color = "darkblue", vjust = 2.5, size = 4, fontface = "bold") +
+  annotate("text", x = mean_x9 + sd_x9, y = 0.02, label = paste("SD:", round(mean_x9 + sd_x9, 2)), color = "firebrick", vjust = 2.5, size = 4, fontface = "bold") +
+  annotate("text", x = mean_x9 - sd_x9, y = 0.02, label = paste("SD:", round(mean_x9 - sd_x9, 2)), color = "firebrick", vjust = 2.5, size = 4, fontface = "bold") +
+  
+  # Apply minimal theme
+  theme_minimal() +
+  theme(  # Remove major vertical grid lines
+    panel.grid.minor.x = element_blank(),  # Remove minor vertical grid lines
+    panel.grid.minor.y = element_blank()  
+    )# Remove minor horizontal grid lines (half lines)
+```
+
+Let's go deeper on x4 specifically, and separate out by sex. I wont make this graph as complicated, we just want to get a look at where the outlier is. Looks like the potential outlier exists in the sample of females, but otherwise if that was excluded, the females have a distribution that is closer to normal, albeit narrower, meaning the variance is (higher, lower?). Males are somewhat more normal.
+
+```{r}
+ggplot(df, aes(x = x4)) + 
+  geom_histogram(binwidth = 0.5, fill = "dodgerblue", color = "white", aes(y = ..density..)) + 
+  geom_density(alpha = 0.4, fill = "firebrick", color="white") +
+  facet_wrap(~ sex) +  # Facet the plot by the sex variable
+  theme_minimal() +
+  labs(title = "Histogram and Density of x4 Faceted by Sex", x = "x4", y = "Density")
+
+```
+
+Let's take that outlier value out of the running. Noting that we're losing one of our female record, leaving it at 24 females and 25 males and a total sample of 49. That should bring us closer to normality. Let's remove participant 49, the outlier row, and run the descriptives and visual analysis again to confirm:
+
+```{r}
+df_cleaned <- df[-49, ]
+```
+
+```{r}
+describe(df_cleaned$x4)
+```
+
+```{r}
+mean_x4c <- mean(df_cleaned$x4)
+sd_x4c <- sd(df_cleaned$x4)
+
+ggplot(df_cleaned, aes(x = x4)) + 
+  geom_histogram(binwidth = 0.5, fill = "dodgerblue", color = "white", aes(y = ..density..)) +
+  geom_density(alpha = 0.4, fill = "firebrick", color = NA) +
+  stat_function(fun = dnorm, args = list(mean = mean_x4c, sd = sd_x4c), color = "black", size = 1) +
+  
+  # Add vertical lines for mean and mean ± standard deviation
+ geom_segment(aes(x = mean_x4c, xend = mean_x4c, y = 0, yend = Inf), linetype = "dashed", color = "darkblue", size = 1) +
+  geom_segment(aes(x = mean_x4c + sd_x4c, xend = mean_x4c + sd_x4c, y = 0, yend = Inf), linetype = "dotted", color = "firebrick", size = 1) +
+  geom_segment(aes(x = mean_x4c - sd_x4c, xend = mean_x4c - sd_x4c, y = 0, yend = Inf), linetype = "dotted", color = "firebrick", size = 1) +
+  
+  # Annotate the mean and standard deviations
+  annotate("text", x = mean_x4c, y = 0.02, label = paste("Mean:", round(mean_x4c, 2)), color = "darkblue", vjust = 2, size = 4, fontface = "bold") +
+  annotate("text", x = mean_x4c + sd_x4c, y = 0.02, label = paste("SD:", round(mean_x4c + sd_x4c, 2)), color = "firebrick", vjust = 2, size = 4, fontface = "bold") +
+  annotate("text", x = mean_x4c - sd_x4c, y = 0.02, label = paste("SD:", round(mean_x4c - sd_x4c, 2)), color = "firebrick", vjust = 2, size = 4, fontface = "bold") +
+  
+  # Apply minimal theme
+  theme_minimal() +
+  theme(  # Remove major vertical grid lines
+    panel.grid.minor.x = element_blank(),  # Remove minor vertical grid lines
+    panel.grid.minor.y = element_blank()  
+    )# Remove minor horizontal grid lines (half lines)
+```
+
+I want to see if x4 and x9 have any sort of relationship. We won't go too deep, but just take a visual view using a scatterplot to get the gist. Because the data was already scaled, we'll take a direct comparison.
+
+### Comparing Variables
+
+```{r}
+# Scale and compare variables
+
+ggplot(df_cleaned, aes(x=x4, y=x9)) +
+  geom_point(size=3, shape=16) +
+  geom_smooth(method="lm", se=TRUE) +
+  theme_minimal()
+```
+
+Checking out our line of best fit, there's a moderately positive linear relationship between x4 and x9, and of course, our standard error increases as we move away from the centered mean.
+
+Finally, we want to check the strength of the variables as they relate to Y, our well being metric.
+
+```{r}
+ggplot(df_cleaned, aes(x=x4, y=y)) +
+  geom_point(size=3, shape=16) +
+  geom_smooth(method="lm", se=TRUE) +
+  theme_minimal()
+```
+
+```{r}
+ggplot(df_cleaned, aes(x=x9, y=y)) +
+  geom_point(size=3, shape=16) +
+  geom_smooth(method="lm", se=TRUE) +
+  theme_minimal()
+```
