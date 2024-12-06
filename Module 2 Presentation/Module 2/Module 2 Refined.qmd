@@ -1,0 +1,302 @@
+---
+title: "Module 2 Presentation"
+author: Ian Habit
+format: html
+editor: visual
+---
+
+### The plan for today:
+
+1.  Look at the data
+
+2.  Look at it more
+
+3.  Check out some correlations
+
+4.  Reliability
+
+5.  Validity using EFA
+
+6.  Run it back again to see if we can improve our scale
+
+7.  Post-hoc effect sizes and power
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+library(psych)
+library(tidyverse)
+library(ggplot2)
+library(pwr)
+library(kableExtra)
+library(corrplot)
+library(reshape2)
+
+df <- read.csv("MODdat2.csv")
+```
+
+### Lookin' at the data!
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+knitr::kable(df)
+```
+
+### Lookin' at it some more!
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+knitr::kable(psych::describe(df,skew=F,ranges=F), digits=2)
+```
+
+### An ugly correlation table.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+# Define X and Y columns
+x_cols <- paste0("x", 1:10)
+y_cols <- c("y1", "y2")
+
+# Select only the X and Y columns for correlation
+selected_data <- df[, c(x_cols, y_cols)]
+
+# Calculate correlation matrix and p-values
+correlation_results <- corr.test(selected_data, use = "pairwise")
+cor_matrix <- correlation_results$r   # Correlation matrix
+p_matrix <- correlation_results$p     # p-value matrix
+
+# Round correlations and add significance markers
+cor_matrix_rounded <- round(cor_matrix, 2)
+for (i in 1:ncol(p_matrix)) {
+  for (j in 1:nrow(p_matrix)) {
+    if (p_matrix[i, j] < 0.001) {
+      cor_matrix_rounded[j, i] <- paste0(cor_matrix_rounded[j, i], "***")
+    } else if (p_matrix[i, j] < 0.01) {
+      cor_matrix_rounded[j, i] <- paste0(cor_matrix_rounded[j, i], "**")
+    } else if (p_matrix[i, j] < 0.05) {
+      cor_matrix_rounded[j, i] <- paste0(cor_matrix_rounded[j, i], "*")
+    }
+  }
+}
+
+# Mask the lower triangle
+cor_matrix_upper <- cor_matrix_rounded
+cor_matrix_upper[lower.tri(cor_matrix_upper)] <- "" # Replace lower triangle with empty strings
+
+# Convert to a data frame
+cor_table <- as.data.frame(cor_matrix_upper)
+colnames(cor_table) <- colnames(cor_matrix)  # Ensure column names are preserved
+rownames(cor_table) <- rownames(cor_matrix)  # Ensure row names are preserved
+
+# Display the correlation table with kableExtra
+cor_table %>%
+  kbl(caption = "Upper Triangular Correlation Matrix with Significance Levels") %>%
+  kable_styling(full_width = FALSE, position = "center") %>%
+  row_spec(0, bold = TRUE)  # Make header bold
+
+```
+
+### A slightly less ugly correlation heatmap
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+# Select only the x and y variables
+x_y_variables <- df[, c("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "y1", "y2")]
+
+# Use corr.test to calculate correlations, p-values, and significance levels
+cor_results <- corr.test(x_y_variables[, 1:10], x_y_variables[, 11:12], method = "pearson")
+
+# Extract the correlation matrix and p-values
+cor_matrix <- cor_results$r
+p_matrix <- cor_results$p
+
+# Dynamically find indices for y1 and y2 in the correlation matrix
+y_indices <- which(colnames(cor_matrix) %in% c("y1", "y2"))
+
+# Subset only the correlations of x variables with y1 and y2
+cor_subset <- cor_matrix[1:10, y_indices]
+p_subset <- p_matrix[1:10, y_indices]
+
+# Create significance markers based on p-values
+significance_stars <- ifelse(p_subset < 0.001, "***",
+                             ifelse(p_subset < 0.01, "**",
+                                    ifelse(p_subset < 0.05, "*", "")))
+
+# Combine correlation values, p-values, and significance markers into a label
+labels <- paste0("r = ", round(cor_subset, 2), "\n(p = ", round(p_subset, 3), ")", significance_stars)
+
+# Melt data for ggplot
+cor_melted <- melt(cor_subset)
+cor_melted$p_value <- melt(p_subset)$value
+cor_melted$significance <- melt(significance_stars)$value
+cor_melted$label <- labels
+
+# Plot the subsetted correlation matrix as a heatmap with labels
+ggplot(cor_melted, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, limit = c(-1, 1), space = "Lab",
+                       name = "Correlation") +
+  geom_text(aes(label = label), color = "black", size = 3) +  # Add labels with correlations, p-values, and significance
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(title = "Correlations of X Variables with Y1 and Y2", x = "Dependent Variables", y = "Independent Variables")
+
+```
+
+### I got that alpha in me...
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+# Calculate Cronbach's Alpha for X variables
+x_cols <- df[,1:10]
+raw_alpha <- psych::alpha(x_cols, check.keys = TRUE)
+print(raw_alpha$total$raw_alpha)
+
+cronbach_alpha_x <- psych::alpha(x_cols, check.keys = TRUE)
+
+# Print Cronbach's Alpha result
+knitr::kable(round(cronbach_alpha_x$alpha.drop,2))
+
+```
+
+### I stole your chart because it looked nice.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+cronbach_alpha_x_drop <- data.frame(cronbach_alpha_x$alpha.drop)
+ggplot(cronbach_alpha_x_drop,aes(cronbach_alpha_x_drop$raw_alpha)) + 
+  geom_histogram() + 
+  xlab("Alpha if item deleted") + 
+  geom_vline(xintercept = cronbach_alpha_x$total$raw_alpha, color="red", lwd=3)
+```
+
+### Explorin' the factors
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+#efa_data <- df[, x_cols]
+
+# Scree plot and parallel analysis to determine number of factors
+fa.parallel(x_cols, fa = "fa", n.iter = 100, show.legend = FALSE, main = "Parallel Analysis Scree Plot")
+
+# Perform EFA with the chosen number of factors (e.g., 2)
+efa_result1 <- fa(x_cols, nfactors = 1, rotate = "varimax")
+
+# Print EFA results
+print(efa_result1)
+
+# Visualize factor loadings
+fa.diagram(efa_result1, main = "Factor Structure Diagram")
+
+```
+
+### Let's Run It Back...what if we dropped the negatively keyed variables?
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+selected_x_vars <- df[, c("x1", "x3", "x4", "x6", "x7", "x9", "x10")]
+
+raw_alpha2 <- psych::alpha(selected_x_vars, check.keys = TRUE)
+print(raw_alpha2$total$raw_alpha)
+
+alpha_result_rem <- psych::alpha(selected_x_vars, check.keys = TRUE)
+
+# Print Cronbach's Alpha result
+knitr::kable(round(alpha_result_rem$alpha.drop,2))
+```
+
+### Factors tell us...it's slightly better? But less reliability.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+# Scree plot and parallel analysis to determine number of factors
+fa.parallel(selected_x_vars, fa = "fa", n.iter = 100, show.legend = FALSE, main = "Parallel Analysis Scree Plot")
+
+# Perform EFA with the chosen number of factors (e.g., 2)
+efa_result3 <- fa(selected_x_vars, nfactors = 1, rotate = "varimax")
+
+# Print EFA results
+print(efa_result3)
+
+# Visualize factor loadings
+fa.diagram(efa_result3, main = "Factor Structure Diagram")
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+# Create data frames for each analysis with MR1, h2, and u2
+original_analysis <- data.frame(
+  Variable = c("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10"),
+  MR1 = c(0.75, -0.78, 0.81, 0.68, -0.75, 0.73, 0.82, -0.73, 0.69, 0.58),
+  h2 = c(0.5654338, 0.6029803, 0.6585191, 0.4675290, 0.5623787, 0.5392728, 0.6700415, 0.5329866, 0.4745709, 0.3353600),
+  u2 = c(0.4345662, 0.3970197, 0.3414809, 0.5324710, 0.4376213, 0.4607272, 0.3299585, 0.4670134, 0.5254291, 0.6646400)
+)
+
+selected_analysis <- data.frame(
+  Variable = c("x1", "x3", "x4", "x6", "x7", "x9", "x10"),
+  MR1 = c(0.76, 0.88, 0.64, 0.78, 0.80, 0.65, 0.61),
+  h2 = c(0.5840699, 0.7675211, 0.4045442, 0.6026746, 0.6408151, 0.4240655, 0.3697624),
+  u2 = c(0.4159301, 0.2324789, 0.5954558, 0.3973254, 0.3591849, 0.5759345, 0.6302376)
+)
+
+# Combine the results side by side for comparison
+comparison_table <- full_join(original_analysis, selected_analysis, by = "Variable", suffix = c("_Original", "_Selected"))
+
+# Display the table using kableExtra
+comparison_table %>%
+  kbl(caption = "Comparison of MR1, h2, and u2 Across Analyses") %>%
+  kable_styling(full_width = FALSE, position = "center") %>%
+  row_spec(0, bold = TRUE)  # Bold the header row
+
+```
+
+### Effect Sizes and POWAH
+
+Looking at y1 (because I think it's a decent "something" that explains the construct we're after) and sex, effect sizes using Cohen's D was **-1.24**, which is pretty sizable.
+
+What about power?
+
+Using 0.05 as alpha critical, our effect size (using the absolute value of 1.24, and a 30 n sample, we get: **0.997** or a 99.7% chance of rejecting the null. I'll take that all day from a post-hoc power calculation.

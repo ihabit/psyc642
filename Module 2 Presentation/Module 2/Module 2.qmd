@@ -1,0 +1,152 @@
+---
+title: "Module 2 Presentation"
+author: Ian Habit
+format: html
+editor: visual
+---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+library(psych)
+library(tidyverse)
+library(ggplot2)
+library(pwr)
+library(kableExtra)
+library(corrplot)
+library(reshape2)
+
+df <- read.csv("MODdat2.csv")
+```
+
+### Let's observe the data first!
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+knitr::kable(df)
+```
+
+### Descriptives...
+
+```{r describe}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+knitr::kable(psych::describe(df,skew=F,ranges=F), digits=2)
+```
+
+### Checking reliability using Chronbach's Alpha
+
+```{r alpha}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+out <- psych::alpha(df[,1:10],check.keys = T)
+knitr::kable(round(out$alpha.drop,2))
+```
+
+### Examining correlations and their significance
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+# Load necessary packages
+library(ggplot2)
+library(reshape2)
+library(psych)
+
+# Load the data (replace "MODdat2.csv" with your actual file name)
+df <- read.csv("MODdat2.csv")
+
+# Select only the x and y variables
+x_y_variables <- df[, c("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "y1", "y2")]
+
+# Use corr.test to calculate correlations, p-values, and significance levels
+cor_results <- corr.test(x_y_variables[, 1:10], x_y_variables[, 11:12], method = "pearson")
+
+# Extract the correlation matrix and p-values
+cor_matrix <- cor_results$r
+p_matrix <- cor_results$p
+
+# Dynamically find indices for y1 and y2 in the correlation matrix
+y_indices <- which(colnames(cor_matrix) %in% c("y1", "y2"))
+
+# Subset only the correlations of x variables with y1 and y2
+cor_subset <- cor_matrix[1:10, y_indices]
+p_subset <- p_matrix[1:10, y_indices]
+
+# Create significance markers based on p-values
+significance_stars <- ifelse(p_subset < 0.001, "***",
+                             ifelse(p_subset < 0.01, "**",
+                                    ifelse(p_subset < 0.05, "*", "")))
+
+# Combine correlation values, p-values, and significance markers into a label
+labels <- paste0("r = ", round(cor_subset, 2), "\n(p = ", round(p_subset, 3), ")", significance_stars)
+
+# Melt data for ggplot
+cor_melted <- melt(cor_subset)
+cor_melted$p_value <- melt(p_subset)$value
+cor_melted$significance <- melt(significance_stars)$value
+cor_melted$label <- labels
+
+# Plot the subsetted correlation matrix as a heatmap with labels
+ggplot(cor_melted, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, limit = c(-1, 1), space = "Lab",
+                       name = "Correlation") +
+  geom_text(aes(label = label), color = "black", size = 3) +  # Add labels with correlations, p-values, and significance
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(title = "Correlations of X Variables with Y1 and Y2", x = "Dependent Variables", y = "Independent Variables")
+
+```
+
+### EFA - Scree Examination
+
+```{r}
+
+# Select only the x variables
+x_variables <- df[, c("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10")]
+
+# Scree plot to visualize the eigenvalues
+scree(x_variables)
+```
+
+```{r}
+
+# Perform the factor analysis with the chosen number of factors (adjust 3 to your selected number)
+efa_result1 <- fa(x_variables, nfactors = 1, rotate = "varimax")
+
+# Print the results
+print(efa_result1)
+```
+
+```{r}
+
+# Perform the factor analysis with the chosen number of factors (adjust 3 to your selected number)
+efa_result2 <- fa(x_variables, nfactors = 2, rotate = "varimax")
+
+# Print the results
+print(efa_result2)
+```
+
+```{r}
+
+fa.plot(efa_result1)
+```
+
+`{#a priori power exercise} # Correlation matrix, check for multicollinearity, why? May indicate that the items do no independently measure what they purport to measure # Covariance - are they going in the same direction, can use in factor analysis later # Reliability - compute chronbachs alpha and why, explain why adding/removing items is important using formula explainer #T-test for differences in means for categorical sex, maybe even Y #interpret T test #basic factor analysis for validity #mutliple regression and r2 #effect sizes #power`

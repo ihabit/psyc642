@@ -1,0 +1,115 @@
+---
+title: "Module 2 Demo - c2024"
+author: "Patrick E. McKnight"
+format: 
+  html: default
+  pdf: default
+---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+library(psych)
+library(ggplot2)
+library(pwr)
+
+EScalc <- function(dv,cond){
+  lvl <- levels(as.factor(cond))
+  x1 <- dv[cond==lvl[1]]
+  x2 <- dv[cond==lvl[2]]
+  out <- round((mean(x1) - mean(x2))/sqrt((var(x1)+var(x2))/2),2)
+  return(out)
+}
+
+```
+
+## The Data
+
+```{r data}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+dat <- read.csv("MODdat2.csv",T)
+knitr::kable(psych::describe(dat,skew=F,ranges=F), digits=2)
+```
+
+## CTT
+
+$$O = T + E$$ $$rho = \frac{T}{O}$$
+
+Alpha is the test I plan to use for estimating rho (reliability)
+
+## CTT analysis of x1..x10
+
+```{r CTT}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+out <- psych::alpha(dat[,1:10],check.keys = T)
+round(out$alpha.drop,2)
+```
+
+## Alpha changes by item
+
+```{r AlphaDelta}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+
+outD <- data.frame(out$alpha.drop)
+ggplot(outD,aes(outD$raw_alpha)) + 
+  geom_histogram() + 
+  xlab("Alpha if item deleted") + 
+  geom_vline(xintercept = out$total$raw_alpha, color="red", lwd=3)
+```
+
+## Hypothesis Testing
+
+```{r echo=FALSE, message=FALSE}
+dat$xTot <- out$scores
+out2 <- aov(xTot~sex,data=dat)
+summary(out2)
+```
+
+## Effect size
+
+```{r ESest}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+ESout <- EScalc(dat$xTot,dat$sex)
+```
+
+We calculate the effect size with observed data to be **`r ESout`**. That estimate comes from Cohen's d:
+
+$$d = \frac{\bar{x}_1 - \bar{x}_2}{\sqrt{\frac{s_1^2 + s_2^2}{2}}}$$
+
+where $\bar{x}_1$ and $\bar{x}_2$ are the means of the two groups and $s_1^2$ and $s_2^2$ are the variances of the two groups. Again, the effect size is **`r ESout`**.
+
+## Hey, how about power?
+
+```{r PWR}
+#| echo: false
+#| message: false
+#| warning: false
+#| error: false
+
+
+pw1a <- pwr.anova.test(2,15,.6, sig.level = 0.05)
+pw1b <- pwr.anova.test(2,15,.6,sig.level = 0.01)
+pw2a <- pwr.anova.test(2,15,ESout,sig.level = 0.05)
+pw2b <- pwr.anova.test(2,15,ESout,sig.level = 0.01)
+```
+
+The power for an expected effect size of 0.6 is **`r round(pw1a$power,2)`** at alpha = 0.05 and **`r round(pw1b$power,2)`** at alpha = 0.01. That expected effect did not occur. Instead, we observed an effect size of **`r ESout`** and, as a result, we had substantially more power than we expected. How much more? Well, for an effect size of **`r ESout`**, the power is **`r round(pw2a$power,2)`** at alpha = 0.05 and **`r round(pw2b$power,2)`** at alpha = 0.01. So, we had more power than we expected. That's good news!
