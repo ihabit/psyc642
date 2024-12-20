@@ -1,18 +1,15 @@
 ---
-title: "Module 3 Presentation"
+title: "Module 3 v2"
 format: html
 editor: visual
 ---
 
-## Module 3 Presentation - Tackling Multiple Regression
-
-# Module 3 Data
-
 ```{r}
-#| echo: true
+#| echo: false
 #| warning: false
 #| message: false
 #| error: false
+
 
 library(tidyverse)
 library(knitr)
@@ -29,7 +26,7 @@ kable(round(head(df),2))
 # Data Preparation
 
 ```{r}
-#| echo: true
+#| echo: false
 #| warning: false
 #| message: false
 #| error: false
@@ -37,10 +34,11 @@ kable(round(head(df),2))
 # calculate sum scores for x1 to x7 after conducting a Cronbach's alpha analysis
 xCA <- alpha(df[,5:11], check.keys = TRUE)
 xCA
-#summary(xCA)
+
+summary(xCA)
 
 # create a new variable for the sum of x1 to x7
-dat$sumX <- rowSums(df[,5:11])
+df$sumX <- rowSums(df[,5:11])
 
 # show bivariate plots of x1 to x7
 pairs.panels(df[,5:11])
@@ -58,53 +56,72 @@ df$f8.f <- as.factor(df$f8)
 
 ```
 
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| error: false
+
+# calculate sum scores for x1 to x7 after conducting a Cronbach's alpha analysis
+xCAdrop <- alpha(df[,c(5,6,7,10,11)], check.keys = TRUE)
+xCAdrop
+
+summary(xCAdrop)
+
+# create a new variable for the x subset
+df$sumXdrop <- rowSums(df[,c(5,6,7,10,11)])
+
+# show bivariate plots of x1 to x7
+pairs.panels(df[,c(5,6,7,10,11)])
+```
+
 # Data Analysis
 
-## Bivariate Analysis
+## Bivariate Analysis (Noise!)
 
 ```{r}
-#| echo: true
+#| echo: false
 #| warning: false
 #| message: false
 #| error: false
 
 # Bivariate model
 
-mod <- lm(y1 ~ sumX, data = df)
+mod <- lm(y2 ~ sumXdrop, data = df)
 summary(mod)
 ```
 
 ```{r}
-#| echo: true
+#| echo: false
 #| warning: false
 #| message: false
 #| error: false
 
 # plot the data
-ggplot(df, aes(x = sumX, y = y1)) +
+ggplot(df, aes(x = sumXdrop, y = y2)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  labs(title = "Bivariate Analysis", x = "Sum of X1 to X7", y = "Y1")
+  labs(title = "Bivariate Analysis", x = "Sum of X Subset", y = "Y2")
 
 ```
 
-## Multivariate Analysis
+## Multivariate Analysis (Nothing upon Nothing)
 
 ```{r}
-#| echo: true
+#| echo: false
 #| warning: false
 #| message: false
 #| error: false
 
 # Multivariate model
 
-mod2 <- lm(y1 ~ x1 + x2 + x3 + x4 + x5 + x6 + x7, data = df)
+mod2 <- lm(y2 ~ x1 + x2 + x3 + x6 + x7, data = df)
 summary(mod2)
 
 
 kable(vif(mod2), col.names = c("Variable", "VIF"))
 
-mod3 <- lm(y1 ~ sumX + f2, data = df)
+mod3 <- lm(y2 ~ sumXdrop + f2, data = df)
 summary(mod3)
 
 kable(vif(mod3), col.names = c("Variable", "VIF"))
@@ -113,54 +130,49 @@ kable(vif(mod3), col.names = c("Variable", "VIF"))
 ```
 
 ```{r}
-#| echo: true
+#| echo: false
 #| warning: false
 #| message: false
 #| error: false
 
 # plot the results of
 
-ggplot(df, aes(x = sumX, y = y1, color = f2.f)) +
+ggplot(df, aes(x = sumXdrop, y = y2, color = f2.f)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  labs(title = "Multivariate Analysis", x = "Sum of X1 to X7", y = "Y1")
+  labs(title = "Multivariate Analysis", x = "Sum of X Subset", y = "Y2")
 
 ```
 
-# Fitting our Model (Better)
+# Fitting our Model (Better) (But Also Not Really Cause Log Didn't Do Anything)
 
 ```{r}
-#| echo: true
+#| echo: false
 #| warning: false
 #| message: false
 #| error: false
 
-# first, we need to adjust our y and x variables so that they are both positive
-df$y1 <- df$y1 + abs(min(df$y1)) + 1
-df$sumX <- df$sumX + abs(min(df$sumX)) + 1
-
-# perform a box-cox transformation on the bivariate model of y1 and sumX
-bc.out <- boxcox(mod, lambda = seq(-2, 2, by = 0.1))
-lambda <- bc.out$x[which(bc.out$y == max(bc.out$y))]
-lambda
-
-# fit the model with the box-cox transformation
-mod.bc <- lm(y1^lambda ~ sumX, data = df)
-summary(mod.bc)
+df$log_sumXdrop <- log(df$sumXdrop + 1)
+mod_log <- lm(y2 ~ log_sumXdrop + f2, data = df)
+summary(mod_log)
 
 ```
 
 ```{r}
-#| echo: true
+#| echo: false
 #| warning: false
 #| message: false
 #| error: false
 
-# plot the results of the box-cox transformation
+# plot the results of the log transform
 
-ggplot(df, aes(x = sumX, y = y1^lambda)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  labs(title = "Bivariate Analysis with Box-Cox Transformation", x = "Sum of X1 to X7", y = "Y1^lambda")
+ggplot(df, aes(x = log_sumXdrop, y = y2)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE, color = "blue") +
+  labs(
+    title = "Scatterplot with Regression Line",
+    x = "Log-transformed Sum of X Subset (log_sumXdrop)",
+    y = "y2"
+  )
 
 ```
